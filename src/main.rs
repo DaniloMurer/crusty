@@ -1,6 +1,12 @@
 use raylib::{ffi::{KeyboardKey, Vector2}, prelude::RaylibDraw, RaylibHandle, RaylibThread};
 use raylib::color::Color;
 
+const SCREEN_WIDTH: i32 = 800;
+const SCREEN_HEIGHT: i32 = 600;
+const SCREEN_TITLE: &str = "Crusty";
+const MAX_FPS: u32 = 60;
+const PLAYER_MOVEMENT_SPEED: f32 = 8.0;
+
 struct Player {
     position: Vector2,
     size: Vector2,
@@ -40,10 +46,10 @@ impl Game {
 fn main() {
     // initialize raylib and create a window
     let (mut rl, thread) = raylib::init()
-        .size(800, 600)
-        .title("Crusty")
+        .size(SCREEN_WIDTH, SCREEN_HEIGHT)
+        .title(SCREEN_TITLE)
         .build();
-    rl.set_target_fps(60);
+    rl.set_target_fps(MAX_FPS);
     let mut game = Game::default();
     while !rl.window_should_close() {
         update_game(&mut rl, &mut game);
@@ -52,27 +58,32 @@ fn main() {
 }
 
 fn update_game(rl: &mut RaylibHandle, game: &mut Game) {
-    //let mut index = 0;
-    for projectile in game.projectiles.iter_mut() {
-        dbg!(projectile.position.y);
-        dbg!(rl.get_screen_height() as f32);
-        if projectile.position.y <= rl.get_screen_height() as f32 - (rl.get_screen_height() as f32 * 2.0) {
+    let mut index_to_delete = 0;
+    let mut should_delete = false;
+    for (index, projectile) in game.projectiles.iter_mut().enumerate() {
+        if projectile.position.y <= SCREEN_HEIGHT as f32 - (SCREEN_HEIGHT as f32 * 2.0) {
             game.fire_next_projectile = true;
-            //index = game.projectiles.len().clone();
-            //index = game.projectiles.iter().position(|&item| item.position.y == projectile.position.y).expect("error while getting index");
-            //game.projectiles.remove(index);
+            index_to_delete = index;
+            should_delete = true;
         }
         projectile.position.y -= projectile.force.y;
     }
-    if rl.is_key_down(KeyboardKey::KEY_UP) {
-        game.player.position.y -= 4.0;
-    } else if rl.is_key_down(KeyboardKey::KEY_DOWN) {
-        game.player.position.y += 4.0;
-    } else if rl.is_key_down(KeyboardKey::KEY_LEFT) {
-        game.player.position.x -= 4.0;
-    } else if rl.is_key_down(KeyboardKey::KEY_RIGHT) {
-        game.player.position.x += 4.0;
-    } else if rl.is_key_down(KeyboardKey::KEY_SPACE) {
+    if should_delete {
+        game.projectiles.remove(index_to_delete);
+    }
+    if rl.is_key_down(KeyboardKey::KEY_W) {
+        game.player.position.y -= PLAYER_MOVEMENT_SPEED;
+    }
+    if rl.is_key_down(KeyboardKey::KEY_S) {
+        game.player.position.y += PLAYER_MOVEMENT_SPEED;
+    }
+    if rl.is_key_down(KeyboardKey::KEY_A) {
+        game.player.position.x -= PLAYER_MOVEMENT_SPEED;
+    }
+    if rl.is_key_down(KeyboardKey::KEY_D) {
+        game.player.position.x += PLAYER_MOVEMENT_SPEED;
+    }
+    if rl.is_key_down(KeyboardKey::KEY_SPACE) && game.fire_next_projectile {
         let projectile = Projectile {
             position: Vector2 {
                 x: game.player.position.x + (game.player.size.x / 2.0),
@@ -82,25 +93,17 @@ fn update_game(rl: &mut RaylibHandle, game: &mut Game) {
             color: Color::BLUE,
             radius: 20.0
         };
-        if game.fire_next_projectile {
-            game.fire_next_projectile = false;
-            game.projectiles.push(projectile);
-        }
+        game.fire_next_projectile = false;
+        game.projectiles.push(projectile);
     }
 }
 
 fn draw_game(rl: &mut RaylibHandle, thread: &RaylibThread, game: &mut Game) {
-
     let mut draw = rl.begin_drawing(thread);
-    draw.draw_fps(700, 500);
     draw.clear_background(Color::PURPLE);
     draw.draw_text("Hello Crusty", 350, 300, 20, Color::WHITE);
-    //draw our player
     draw.draw_rectangle_v(game.player.position, game.player.size, game.player.color);
     for projectile in game.projectiles.iter_mut() { 
         draw.draw_circle_v(projectile.position, projectile.radius, projectile.color);
     }
-    /*if game.projectile.should_render {
-        draw.draw_circle_v(game.projectile.position, game.projectile.radius, game.projectile.color);
-    }*/
 }
