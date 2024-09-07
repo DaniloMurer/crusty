@@ -1,4 +1,5 @@
-use raylib::{color::Color, ffi::{KeyboardKey, Vector2}, prelude::RaylibDraw, RaylibHandle, RaylibThread};
+use raylib::{ffi::{KeyboardKey, Vector2}, prelude::RaylibDraw, RaylibHandle, RaylibThread};
+use raylib::color::Color;
 
 struct Player {
     position: Vector2,
@@ -8,14 +9,14 @@ struct Player {
 
 struct Game {
     player: Player,
-    projectile: Projectile
+    projectiles: Vec<Projectile>,
+    fire_next_projectile: bool
 }
 
 struct Projectile {
     position: Vector2,
     force: Vector2,
     radius: f32,
-    should_render: bool,
     color: Color
 }
 
@@ -26,16 +27,12 @@ impl Game {
             size: Vector2 { x: 100.0, y: 50.0 },
             color: Color::RED
         };
-        let projectile = Projectile {
-            position: Vector2 { x: player.position.x, y: player.position.y - 20.0 },
-            force: Vector2 { x: 0.0, y: 5.0 },
-            radius: 0.0,
-            should_render: false,
-            color: Color::BLUE
-        };
+        let projectiles = Vec::new();
+
         Game {
             player,
-            projectile
+            projectiles,
+            fire_next_projectile: true
         }
     }
 }
@@ -46,7 +43,7 @@ fn main() {
         .size(800, 600)
         .title("Crusty")
         .build();
-    rl.set_target_fps(250);
+    rl.set_target_fps(60);
     let mut game = Game::default();
     while !rl.window_should_close() {
         update_game(&mut rl, &mut game);
@@ -55,19 +52,40 @@ fn main() {
 }
 
 fn update_game(rl: &mut RaylibHandle, game: &mut Game) {
+    //let mut index = 0;
+    for projectile in game.projectiles.iter_mut() {
+        dbg!(projectile.position.y);
+        dbg!(rl.get_screen_height() as f32);
+        if projectile.position.y <= rl.get_screen_height() as f32 - (rl.get_screen_height() as f32 * 2.0) {
+            game.fire_next_projectile = true;
+            //index = game.projectiles.len().clone();
+            //index = game.projectiles.iter().position(|&item| item.position.y == projectile.position.y).expect("error while getting index");
+            //game.projectiles.remove(index);
+        }
+        projectile.position.y -= projectile.force.y;
+    }
     if rl.is_key_down(KeyboardKey::KEY_UP) {
-        game.player.position.y -= 1.0;
+        game.player.position.y -= 4.0;
     } else if rl.is_key_down(KeyboardKey::KEY_DOWN) {
-        game.player.position.y += 1.0;
+        game.player.position.y += 4.0;
     } else if rl.is_key_down(KeyboardKey::KEY_LEFT) {
-        game.player.position.x -= 1.0;
+        game.player.position.x -= 4.0;
     } else if rl.is_key_down(KeyboardKey::KEY_RIGHT) {
-        game.player.position.x += 1.0;
+        game.player.position.x += 4.0;
     } else if rl.is_key_down(KeyboardKey::KEY_SPACE) {
-        game.projectile.should_render = true;
-        game.projectile.position.y -= game.projectile.force.y;
-        game.projectile.position.x = game.player.position.x;
-        game.projectile.radius = 20.0;
+        let projectile = Projectile {
+            position: Vector2 {
+                x: game.player.position.x + (game.player.size.x / 2.0),
+                y: game.player.position.y - 20.0
+            },
+            force: Vector2 { x: 0.0, y: 30.0 },
+            color: Color::BLUE,
+            radius: 20.0
+        };
+        if game.fire_next_projectile {
+            game.fire_next_projectile = false;
+            game.projectiles.push(projectile);
+        }
     }
 }
 
@@ -79,7 +97,10 @@ fn draw_game(rl: &mut RaylibHandle, thread: &RaylibThread, game: &mut Game) {
     draw.draw_text("Hello Crusty", 350, 300, 20, Color::WHITE);
     //draw our player
     draw.draw_rectangle_v(game.player.position, game.player.size, game.player.color);
-    if game.projectile.should_render {
-        draw.draw_circle_v(game.projectile.position, game.projectile.radius, game.projectile.color);
+    for projectile in game.projectiles.iter_mut() { 
+        draw.draw_circle_v(projectile.position, projectile.radius, projectile.color);
     }
+    /*if game.projectile.should_render {
+        draw.draw_circle_v(game.projectile.position, game.projectile.radius, game.projectile.color);
+    }*/
 }
