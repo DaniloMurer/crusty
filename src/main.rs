@@ -1,4 +1,4 @@
-use raylib::{ffi::{KeyboardKey, Vector2}, prelude::RaylibDraw, RaylibHandle, RaylibThread};
+use raylib::{ffi::{CheckCollisionRecs, KeyboardKey, Rectangle, Vector2}, prelude::RaylibDraw, RaylibHandle, RaylibThread};
 use raylib::color::Color;
 
 const SCREEN_WIDTH: i32 = 800;
@@ -13,9 +13,16 @@ struct Player {
     color: Color
 }
 
+struct Wall {
+    position: Vector2,
+    size: Vector2,
+    color: Color
+}
+
 struct Game {
     player: Player,
     projectiles: Vec<Projectile>,
+    walls: Vec<Wall>,
     fire_next_projectile: bool
 }
 
@@ -34,10 +41,15 @@ impl Game {
             color: Color::RED
         };
         let projectiles = Vec::new();
+        let walls = vec![
+            Wall { position: Vector2 { x: 300.0, y: 300.0 }, size: Vector2 { x: 100.0, y: 100.0 }, color: Color::GRAY },
+            Wall { position: Vector2 { x: 400.0, y: 300.0 }, size: Vector2 { x: 100.0, y: 100.0 }, color: Color::GRAY }
 
+        ];
         Game {
             player,
             projectiles,
+            walls,
             fire_next_projectile: true
         }
     }
@@ -71,16 +83,16 @@ fn update_game(rl: &mut RaylibHandle, game: &mut Game) {
     if should_delete {
         game.projectiles.remove(index_to_delete);
     }
-    if rl.is_key_down(KeyboardKey::KEY_W) {
+    if rl.is_key_down(KeyboardKey::KEY_W) && !check_player_wall_collision(game) {
         game.player.position.y -= PLAYER_MOVEMENT_SPEED;
     }
-    if rl.is_key_down(KeyboardKey::KEY_S) {
+    if rl.is_key_down(KeyboardKey::KEY_S) && !check_player_wall_collision(game) {
         game.player.position.y += PLAYER_MOVEMENT_SPEED;
     }
-    if rl.is_key_down(KeyboardKey::KEY_A) {
+    if rl.is_key_down(KeyboardKey::KEY_A) && !check_player_wall_collision(game) {
         game.player.position.x -= PLAYER_MOVEMENT_SPEED;
     }
-    if rl.is_key_down(KeyboardKey::KEY_D) {
+    if rl.is_key_down(KeyboardKey::KEY_D) && !check_player_wall_collision(game) {
         game.player.position.x += PLAYER_MOVEMENT_SPEED;
     }
     if rl.is_key_down(KeyboardKey::KEY_SPACE) && game.fire_next_projectile {
@@ -103,7 +115,22 @@ fn draw_game(rl: &mut RaylibHandle, thread: &RaylibThread, game: &mut Game) {
     draw.clear_background(Color::PURPLE);
     draw.draw_text("Hello Crusty", 350, 300, 20, Color::WHITE);
     draw.draw_rectangle_v(game.player.position, game.player.size, game.player.color);
-    for projectile in game.projectiles.iter_mut() { 
+    for wall in game.walls.iter() {
+        draw.draw_rectangle_v(wall.position, wall.size, wall.color);
+    }
+    for projectile in game.projectiles.iter() {
         draw.draw_circle_v(projectile.position, projectile.radius, projectile.color);
     }
+}
+
+fn check_player_wall_collision(game: &mut Game) -> bool {
+    let rec_player = Rectangle{ x: game.player.position.x, y: game.player.position.y, width: game.player.size.x, height: game.player.size.y };
+    let mut does_collide = false;
+    for wall in game.walls.iter() {
+        let rec_wall = Rectangle{ x: wall.position.x, y: wall.position.y, width: wall.size.x, height: wall.size.y };
+        unsafe {
+            does_collide = CheckCollisionRecs(rec_player, rec_wall);
+        }
+    }
+    does_collide
 }
