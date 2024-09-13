@@ -1,5 +1,9 @@
-use raylib::{ffi::{CheckCollisionRecs, KeyboardKey, Rectangle, Vector2}, prelude::RaylibDraw, RaylibHandle, RaylibThread};
 use raylib::color::Color;
+use raylib::{
+    ffi::{CheckCollisionRecs, KeyboardKey, Rectangle, Vector2},
+    prelude::RaylibDraw,
+    RaylibHandle, RaylibThread,
+};
 
 const SCREEN_WIDTH: i32 = 800;
 const SCREEN_HEIGHT: i32 = 600;
@@ -10,27 +14,27 @@ const PLAYER_MOVEMENT_SPEED: f32 = 8.0;
 struct Player {
     position: Vector2,
     size: Vector2,
-    color: Color
+    color: Color,
 }
 
 struct Wall {
     position: Vector2,
     size: Vector2,
-    color: Color
+    color: Color,
 }
 
 struct Game {
     player: Player,
     projectiles: Vec<Projectile>,
     walls: Vec<Wall>,
-    fire_next_projectile: bool
+    fire_next_projectile: bool,
 }
 
 struct Projectile {
     position: Vector2,
     force: Vector2,
     radius: f32,
-    color: Color
+    color: Color,
 }
 
 impl Game {
@@ -38,19 +42,26 @@ impl Game {
         let player = Player {
             position: Vector2 { x: 400.0, y: 400.0 },
             size: Vector2 { x: 100.0, y: 50.0 },
-            color: Color::RED
+            color: Color::RED,
         };
         let projectiles = Vec::new();
         let walls = vec![
-            Wall { position: Vector2 { x: 300.0, y: 300.0 }, size: Vector2 { x: 100.0, y: 100.0 }, color: Color::GRAY },
-            Wall { position: Vector2 { x: 400.0, y: 300.0 }, size: Vector2 { x: 100.0, y: 100.0 }, color: Color::GRAY }
-
+            Wall {
+                position: Vector2 { x: 300.0, y: 300.0 },
+                size: Vector2 { x: 100.0, y: 100.0 },
+                color: Color::GRAY,
+            },
+            Wall {
+                position: Vector2 { x: 400.0, y: 300.0 },
+                size: Vector2 { x: 100.0, y: 100.0 },
+                color: Color::GRAY,
+            },
         ];
         Game {
             player,
             projectiles,
             walls,
-            fire_next_projectile: true
+            fire_next_projectile: true,
         }
     }
 }
@@ -99,11 +110,11 @@ fn update_game(rl: &mut RaylibHandle, game: &mut Game) {
         let projectile = Projectile {
             position: Vector2 {
                 x: game.player.position.x + (game.player.size.x / 2.0),
-                y: game.player.position.y - 20.0
+                y: game.player.position.y - 20.0,
             },
             force: Vector2 { x: 0.0, y: 30.0 },
             color: Color::BLUE,
-            radius: 20.0
+            radius: 20.0,
         };
         game.fire_next_projectile = false;
         game.projectiles.push(projectile);
@@ -124,10 +135,20 @@ fn draw_game(rl: &mut RaylibHandle, thread: &RaylibThread, game: &mut Game) {
 }
 
 fn check_player_wall_collision(game: &mut Game) -> bool {
-    let rec_player = Rectangle{ x: game.player.position.x, y: game.player.position.y, width: game.player.size.x, height: game.player.size.y };
+    let rec_player = Rectangle {
+        x: game.player.position.x,
+        y: game.player.position.y,
+        width: game.player.size.x,
+        height: game.player.size.y,
+    };
     let mut does_collide = false;
     for wall in game.walls.iter() {
-        let rec_wall = Rectangle{ x: wall.position.x, y: wall.position.y, width: wall.size.x, height: wall.size.y };
+        let rec_wall = Rectangle {
+            x: wall.position.x,
+            y: wall.position.y,
+            width: wall.size.x,
+            height: wall.size.y,
+        };
         unsafe {
             does_collide = CheckCollisionRecs(rec_player, rec_wall);
         }
