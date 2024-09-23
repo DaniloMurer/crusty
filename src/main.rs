@@ -1,4 +1,5 @@
 use raylib::color::Color;
+use raylib::ffi::CheckCollisionCircleRec;
 use raylib::{
     ffi::{CheckCollisionRecs, KeyboardKey, Rectangle, Vector2},
     prelude::RaylibDraw,
@@ -8,8 +9,8 @@ use raylib::{
 const SCREEN_WIDTH: i32 = 800;
 const SCREEN_HEIGHT: i32 = 600;
 const SCREEN_TITLE: &str = "Crusty";
-const MAX_FPS: u32 = 60;
-const PLAYER_MOVEMENT_SPEED: f32 = 8.0;
+const MAX_FPS: u32 = 240;
+const PLAYER_MOVEMENT_SPEED: f32 = 1.0;
 
 struct Player {
     position: Vector2,
@@ -47,7 +48,7 @@ impl Game {
         let projectiles = Vec::new();
         let walls = vec![
             Wall {
-                position: Vector2 { x: 300.0, y: 300.0 },
+                position: Vector2 { x: 200.0, y: 300.0 },
                 size: Vector2 { x: 100.0, y: 100.0 },
                 color: Color::GRAY,
             },
@@ -90,20 +91,22 @@ fn update_game(rl: &mut RaylibHandle, game: &mut Game) {
             should_delete = true;
         }
         projectile.position.y -= projectile.force.y;
+        //FIXME: all my homies hate the borrow checker. projectile collision with
+        //check_projectile_collistion not working as expected. ergo not at all
     }
     if should_delete {
         game.projectiles.remove(index_to_delete);
     }
-    if rl.is_key_down(KeyboardKey::KEY_W) && !check_player_wall_collision(game) {
+    if rl.is_key_down(KeyboardKey::KEY_W) && !check_player_wall_collision(game, 'w') {
         game.player.position.y -= PLAYER_MOVEMENT_SPEED;
     }
-    if rl.is_key_down(KeyboardKey::KEY_S) && !check_player_wall_collision(game) {
+    if rl.is_key_down(KeyboardKey::KEY_S) && !check_player_wall_collision(game, 's') {
         game.player.position.y += PLAYER_MOVEMENT_SPEED;
     }
-    if rl.is_key_down(KeyboardKey::KEY_A) && !check_player_wall_collision(game) {
+    if rl.is_key_down(KeyboardKey::KEY_A) && !check_player_wall_collision(game, 'a') {
         game.player.position.x -= PLAYER_MOVEMENT_SPEED;
     }
-    if rl.is_key_down(KeyboardKey::KEY_D) && !check_player_wall_collision(game) {
+    if rl.is_key_down(KeyboardKey::KEY_D) && !check_player_wall_collision(game, 'd') {
         game.player.position.x += PLAYER_MOVEMENT_SPEED;
     }
     if rl.is_key_down(KeyboardKey::KEY_SPACE) && game.fire_next_projectile {
@@ -112,7 +115,7 @@ fn update_game(rl: &mut RaylibHandle, game: &mut Game) {
                 x: game.player.position.x + (game.player.size.x / 2.0),
                 y: game.player.position.y - 20.0,
             },
-            force: Vector2 { x: 0.0, y: 30.0 },
+            force: Vector2 { x: 0.0, y: 10.0 },
             color: Color::BLUE,
             radius: 20.0,
         };
@@ -134,13 +137,74 @@ fn draw_game(rl: &mut RaylibHandle, thread: &RaylibThread, game: &mut Game) {
     }
 }
 
-fn check_player_wall_collision(game: &mut Game) -> bool {
-    let rec_player = Rectangle {
-        x: game.player.position.x,
-        y: game.player.position.y,
-        width: game.player.size.x,
-        height: game.player.size.y,
-    };
+fn check_projectile_collistion(game: &mut Game) -> bool {
+    let circ_projectile = game.projectiles.iter().next().unwrap();
+    let mut does_collide = false;
+    for wall in game.walls.iter() {
+        let rec_wall = Rectangle {
+            x: wall.position.x,
+            y: wall.position.y,
+            width: wall.size.x,
+            height: wall.size.y,
+        };
+
+        unsafe {
+            does_collide =
+                CheckCollisionCircleRec(circ_projectile.position, circ_projectile.radius, rec_wall);
+        }
+
+        if does_collide {
+            return does_collide;
+        }
+        println!("trace: going through wall");
+    }
+    does_collide
+}
+
+fn check_player_wall_collision(game: &mut Game, direction: char) -> bool {
+    let rec_player: Rectangle;
+    match direction {
+        'w' => {
+            rec_player = Rectangle {
+                x: (game.player.position.x),
+                y: (game.player.position.y - PLAYER_MOVEMENT_SPEED),
+                width: game.player.size.x,
+                height: game.player.size.y,
+            }
+        }
+        's' => {
+            rec_player = Rectangle {
+                x: (game.player.position.x),
+                y: (game.player.position.y + PLAYER_MOVEMENT_SPEED),
+                width: game.player.size.x,
+                height: game.player.size.y,
+            }
+        }
+        'a' => {
+            rec_player = Rectangle {
+                x: (game.player.position.x - PLAYER_MOVEMENT_SPEED),
+                y: (game.player.position.y),
+                width: game.player.size.x,
+                height: game.player.size.y,
+            }
+        }
+        'd' => {
+            rec_player = Rectangle {
+                x: (game.player.position.x + PLAYER_MOVEMENT_SPEED),
+                y: (game.player.position.y),
+                width: game.player.size.x,
+                height: game.player.size.y,
+            }
+        }
+        _ => {
+            rec_player = Rectangle {
+                x: 0.0,
+                y: 0.0,
+                width: 0.0,
+                height: 0.0,
+            }
+        }
+    }
     let mut does_collide = false;
     for wall in game.walls.iter() {
         let rec_wall = Rectangle {
@@ -152,6 +216,10 @@ fn check_player_wall_collision(game: &mut Game) -> bool {
         unsafe {
             does_collide = CheckCollisionRecs(rec_player, rec_wall);
         }
+        if does_collide {
+            return does_collide;
+        }
+        println!("trace: going through wall");
     }
     does_collide
 }
